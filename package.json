@@ -1,6 +1,6 @@
 {
   "name": "drag-view",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DragView makes an element scrollable and scaleable with touch/mouse gestures within it's parent container",
   "main": "lib/drag-view.js",
   "scripts": {
