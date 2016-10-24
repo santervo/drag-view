@@ -5,10 +5,8 @@ ensuring that it will remain bounded by it's containers edges.
 
 ## Installation
 
-Install drag-view and jquery to your project. JQuery is required but it's marked as peer dependency.
-
 ```
-npm install --save drag-view jquery
+npm install --save drag-view
 ```
 
 ## Usage
