@@ -15,6 +15,8 @@ export default class DragView {
     this.minScale = opts.minScale || 1
     this.maxScale = opts.maxScale || 3
 
+    this.el.css({overflow: 'auto'})
+
     // Prevent dragging for images
     this.el.on('dragstart', 'img', function(event) { event.preventDefault(); });
 
