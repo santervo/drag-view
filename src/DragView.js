@@ -2,6 +2,7 @@ import $ from 'jquery'
 import Hammer from 'hammerjs'
 import 'jquery.transit'
 
+import AnimationFrame from './AnimationFrame'
 import StyleSheet from './StyleSheet'
 
 const ensureWithinBoundaries = (value, min, max) => {
@@ -42,6 +43,8 @@ export default class DragView {
     this.style = new StyleSheet(this.content)
     this.style.setTranslate({x: 0, y: 0})
     this.style.setScale(1)
+
+    this.frame = new AnimationFrame()
   }
 
   // Function that stores the scroll position at the start of pan event
@@ -83,15 +86,17 @@ export default class DragView {
 
   onPinch(event) {
     const scale = event.scale * this.scaleStart
-    this.scaleElement(scale)
+    this.frame.throttle(() => {
+      this.scaleElement(scale)
 
-    // Adjust translate so that content will remain positioned at point (0,0)
-    // and scroll position so that no visible scrolling occurs because of translation change
-    const translationOffset = this.calculateTranslationOffset()
-    const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
+      // Adjust translate so that content will remain positioned at point (0,0)
+      // and scroll position so that no visible scrolling occurs because of translation change
+      const translationOffset = this.calculateTranslationOffset()
+      const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
 
-    this.style.setTranslate(translationOffset)
-    this.setScrollPosition(adjustedScrollPosition)
+      this.style.setTranslate(translationOffset)
+      this.setScrollPosition(adjustedScrollPosition)
+    })
   }
 
   calculateAdjustedScrollPosition(translationOffset) {
