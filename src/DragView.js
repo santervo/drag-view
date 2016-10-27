@@ -53,7 +53,8 @@ export default class DragView {
     if(this.scrollStart === null) {
       return
     }
-    var position = {
+    // Calculate scroll position from scroll start
+    const position = {
       x: this.scrollStart.x - event.deltaX,
       y: this.scrollStart.y - event.deltaY
     }
@@ -68,32 +69,24 @@ export default class DragView {
     // Record start value of scale
     this.scaleStart = this.style.getScale()
 
-    const position = this.content.offset()
-
     // Update transform origin to center point of pinch
+    const position = this.content.offset()
     const transformOrigin = {
       x: (event.center.x - position.left) / this.scaleStart,
       y: (event.center.y - position.top) / this.scaleStart
     }
+    this.style.setTransformOrigin(transformOrigin)
 
-    this.updateTransformOrigin(transformOrigin)
+    // Update translate so that scroll position remains same
+    this.style.setTranslate(this.calculateTranslationOffset())
   }
 
   onPinch(event) {
-    var scale = event.scale
-    scale = scale * this.scaleStart
+    const scale = event.scale * this.scaleStart
     this.scaleElement(scale)
-    this.adjustPosition()
-  }
 
-  updateTransformOrigin(transformOrigin) {
-    this.style.setTransformOrigin(transformOrigin)
-
-    const translationOffset = this.calculateTranslationOffset()
-    this.style.setTranslate(translationOffset)
-  }
-
-  adjustPosition() {
+    // Adjust translate so that content will remain positioned at point (0,0)
+    // and scroll position so that no visible scrolling occurs because of translation change
     const translationOffset = this.calculateTranslationOffset()
     const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
 
@@ -120,8 +113,8 @@ export default class DragView {
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
   calculateTranslationOffset() {
-    var scale = this.style.getScale()
-    var origin = this.style.getTransformOrigin()
+    const scale = this.style.getScale()
+    const origin = this.style.getTransformOrigin()
     return {
       x: origin.x * (scale-1),
       y: origin.y * (scale-1)
