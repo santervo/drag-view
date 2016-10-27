@@ -47,6 +47,35 @@ export default class DragView {
     this.frame = new AnimationFrame()
   }
 
+  scaleIn(amount) {
+    this.centerTransformOrigin()
+
+    amount = amount || 0.25
+    const scale = this.style.getScale() * 1 - amount
+    this.updateScale(scale)
+  }
+
+  scaleOut(amount) {
+    this.centerTransformOrigin()
+
+    amount = amount || 0.25
+    const scale = this.style.getScale() * 1 + amount
+    this.updateScale(scale)
+  }
+
+  centerTransformOrigin() {
+    const scale = this.style.getScale()
+    const contentPosition = this.content.position()
+    const transformOrigin = {
+      x: ((this.el.width() / 2) - contentPosition.left) / scale,
+      y: ((this.el.height() / 2) - contentPosition.top) / scale
+    }
+    this.style.setTransformOrigin(transformOrigin)
+
+    // Update translate so that scroll position remains same
+    this.style.setTranslate(this.calculateTranslationOffset())
+  }
+
   // Function that stores the scroll position at the start of pan event
   onPanStart() {
     this.scrollStart = this.getScrollPosition()
@@ -87,15 +116,7 @@ export default class DragView {
   onPinch(event) {
     const scale = event.scale * this.scaleStart
     this.frame.throttle(() => {
-      this.scaleElement(scale)
-
-      // Adjust translate so that content will remain positioned at point (0,0)
-      // and scroll position so that no visible scrolling occurs because of translation change
-      const translationOffset = this.calculateTranslationOffset()
-      const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
-
-      this.style.setTranslate(translationOffset)
-      this.setScrollPosition(adjustedScrollPosition)
+      this.updateScale(scale)
     })
   }
 
@@ -109,12 +130,18 @@ export default class DragView {
     }
   }
 
-  scaleElement(scale) {
+  updateScale(scale) {
     scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
-
     this.style.setScale(scale)
-  }
 
+    // Adjust translate so that content will remain positioned at point (0,0)
+    // and scroll position so that no visible scrolling occurs because of translation change
+    const translationOffset = this.calculateTranslationOffset()
+    const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
+
+    this.style.setTranslate(translationOffset)
+    this.setScrollPosition(adjustedScrollPosition)
+  }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
   calculateTranslationOffset() {

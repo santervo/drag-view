@@ -16,8 +16,9 @@ export default class StyleSheet {
     }
   }
 
-  setTransformOrigin(transformOrigin) {
-    const transformOriginStr = transformOrigin.x + 'px ' + transformOrigin.y + 'px'
+  setTransformOrigin(transformOrigin, unit) {
+    unit = unit || 'px'
+    const transformOriginStr = transformOrigin.x + unit + ' ' + transformOrigin.y + unit
     this.el.css({transformOrigin: transformOriginStr})
   }
 
