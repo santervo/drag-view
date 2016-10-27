@@ -2,6 +2,8 @@ import $ from 'jquery'
 import Hammer from 'hammerjs'
 import 'jquery.transit'
 
+import StyleSheet from './StyleSheet'
+
 const ensureWithinBoundaries = (value, min, max) => {
   value = value < min ? min : value
   value = value > max ? max : value
@@ -11,6 +13,7 @@ const ensureWithinBoundaries = (value, min, max) => {
 export default class DragView {
   constructor(selector, opts = {}) {
     this.el = $(selector)
+    this.content = this.el.children()
 
     this.minScale = opts.minScale || 1
     this.maxScale = opts.maxScale || 3
@@ -35,8 +38,10 @@ export default class DragView {
       this.hammer.on("pinchstart", this.onPinchStart.bind(this))
       this.hammer.on("pinch", this.onPinch.bind(this))
     }
-    this.setTranslate({x: 0, y: 0})
-    this.setScale(1)
+
+    this.style = new StyleSheet(this.content)
+    this.style.setTranslate({x: 0, y: 0})
+    this.style.setScale(1)
   }
 
   // Function that stores the scroll position at the start of pan event
@@ -61,9 +66,9 @@ export default class DragView {
 
   onPinchStart(event) {
     // Record start value of scale
-    this.scaleStart = this.getScale()
+    this.scaleStart = this.style.getScale()
 
-    const position = this.el.children().offset()
+    const position = this.content.offset()
 
     // Update transform origin to center point of pinch
     const transformOrigin = {
@@ -82,22 +87,22 @@ export default class DragView {
   }
 
   updateTransformOrigin(transformOrigin) {
-    this.setTransformOrigin(transformOrigin)
+    this.style.setTransformOrigin(transformOrigin)
 
     const translationOffset = this.calculateTranslationOffset()
-    this.setTranslate(translationOffset)
+    this.style.setTranslate(translationOffset)
   }
 
   adjustPosition() {
     const translationOffset = this.calculateTranslationOffset()
     const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
 
-    this.setTranslate(translationOffset)
+    this.style.setTranslate(translationOffset)
     this.setScrollPosition(adjustedScrollPosition)
   }
 
   calculateAdjustedScrollPosition(translationOffset) {
-    const translate = this.getTranslate()
+    const translate = this.style.getTranslate()
     const scrollPosition = this.getScrollPosition()
 
     return  {
@@ -109,64 +114,20 @@ export default class DragView {
   scaleElement(scale) {
     scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
 
-    this.setScale(scale)
+    this.style.setScale(scale)
   }
 
-  // get/set scale
-  getScale() {
-    return this.el.children().css('scale')
-  }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
   calculateTranslationOffset() {
-    var scale = this.getScale()
-    var origin = this.getTransformOrigin()
+    var scale = this.style.getScale()
+    var origin = this.style.getTransformOrigin()
     return {
       x: origin.x * (scale-1),
       y: origin.y * (scale-1)
     }
   }
 
-  // Return current {x,y} transform origin
-  getTransformOrigin() {
-    var transformOrigin = this.el.children().css('transformOrigin')
-    var parts = transformOrigin.split(" ")
-    return {
-      x: parseInt(parts[0]),
-      y: parseInt(parts[1])
-    }
-  }
-
-  setTransformOrigin(transformOrigin) {
-    const transformOriginStr = transformOrigin.x + 'px ' + transformOrigin.y + 'px'
-    this.el.children().css({transformOrigin: transformOriginStr})
-  }
-
-  // Return current {x,y} translate
-  getTranslate() {
-    var translate = this.el.children().css('translate');
-    var parts
-
-    if(typeof(translate) === 'string') {
-      // Parse translate string "-123px,-61px"
-      parts = translate.split(',')
-      return {
-        x: parseInt(parts[0]),
-        y: parseInt(parts[1])
-      }
-    }
-    else {
-      return { x:0, y: 0}
-    }
-  }
-
-  setTranslate(translation) {
-    this.el.children().css({translate: [translation.x, translation.y]})
-  }
-
-  setScale(scale) {
-    this.el.children().css({scale: scale})
-  }
 
   // Return current {x,y} translate
   getScrollPosition() {
