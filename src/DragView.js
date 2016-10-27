@@ -15,6 +15,8 @@ export default class DragView {
     this.minScale = opts.minScale || 1
     this.maxScale = opts.maxScale || 3
 
+    this.scrollStart = null
+
     this.el.css({overflow: 'auto'})
 
     // Prevent dragging for images
@@ -25,6 +27,7 @@ export default class DragView {
     this.hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
     this.hammer.on("panstart", this.onPanStart.bind(this))
     this.hammer.on("pan", this.onPan.bind(this))
+    this.hammer.on("panend", this.onPanEnd.bind(this))
 
     // Enable scaling optionally
     if(opts.scaleable) {
@@ -42,6 +45,9 @@ export default class DragView {
   }
 
   onPan(event) {
+    if(this.scrollStart === null) {
+      return
+    }
     var position = {
       x: this.scrollStart.x - event.deltaX,
       y: this.scrollStart.y - event.deltaY
@@ -49,14 +55,20 @@ export default class DragView {
     this.setScrollPosition(position)
   }
 
+  onPanEnd() {
+    this.scrollStart = null
+  }
+
   onPinchStart(event) {
     // Record start value of scale
     this.scaleStart = this.getScale()
 
+    const position = this.el.children().offset()
+
     // Update transform origin to center point of pinch
     const transformOrigin = {
-      x: (event.center.x - event.target.x) / this.scaleStart,
-      y: (event.center.y - event.target.y) / this.scaleStart
+      x: (event.center.x - position.left) / this.scaleStart,
+      y: (event.center.y - position.top) / this.scaleStart
     }
 
     this.updateTransformOrigin(transformOrigin)
