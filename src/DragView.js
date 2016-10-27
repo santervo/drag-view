@@ -63,6 +63,10 @@ export default class DragView {
     this.updateScale(scale)
   }
 
+  getScale() {
+    this.style.getScale()
+  }
+
   centerTransformOrigin() {
     const scale = this.style.getScale()
     const contentPosition = this.content.position()
