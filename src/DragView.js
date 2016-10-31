@@ -1,6 +1,5 @@
 import $ from 'jquery'
 import Hammer from 'hammerjs'
-import 'jquery.transit'
 
 import AnimationFrame from './AnimationFrame'
 import StyleSheet from './StyleSheet'
@@ -64,7 +63,7 @@ export default class DragView {
   }
 
   getScale() {
-    this.style.getScale()
+    return this.style.getScale()
   }
 
   centerTransformOrigin() {

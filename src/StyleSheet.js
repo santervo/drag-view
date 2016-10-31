@@ -1,4 +1,5 @@
 import $ from 'jquery'
+import 'jquery.transit'
 
 // Class for parsing/setting style values on element
 export default class StyleSheet {
