@@ -1,4 +1,3 @@
-import $ from 'jquery'
 import Hammer from 'hammerjs'
 
 import AnimationFrame from './AnimationFrame'
@@ -10,23 +9,22 @@ const ensureWithinBoundaries = (value, min, max) => {
 }
 
 export default class DragView {
-  constructor(selector, opts = {}) {
-    this.el = $(selector)
-    this.content = this.el.children()
-    this.contentEl = this.content[0]
+  constructor(el, opts = {}) {
+    if(typeof(el.get) === 'function') {
+      el = el.get(0)
+    }
+    this.el = el
+    this.contentEl = this.el.children[0]
 
     this.minScale = opts.minScale || 1
     this.maxScale = opts.maxScale || 3
 
     this.scrollStart = null
 
-    this.el.css({overflow: 'auto'})
-
-    // Prevent dragging for images
-    this.el.on('dragstart', 'img', function(event) { event.preventDefault(); });
+    this.el.style.overflow = 'auto'
 
     // Setup hammer
-    this.hammer = new Hammer(this.el[0]);
+    this.hammer = new Hammer(this.el);
     this.hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
     this.hammer.on("panstart", this.onPanStart.bind(this))
     this.hammer.on("pan", this.onPan.bind(this))
@@ -42,6 +40,7 @@ export default class DragView {
     this.scale = 1
     this.translate = {x: 0, y: 0 }
     this.transformOrigin = { x:0, y: 0 }
+    this.scrollPosition = { x: 0, y: 0 }
 
     this.frame = new AnimationFrame()
   }
@@ -80,12 +79,12 @@ export default class DragView {
       return
     }
     // Calculate scroll position from scroll start
-    const scrollPosition = {
+    this.scrollPosition = {
       x: this.scrollStart.x - event.deltaX,
       y: this.scrollStart.y - event.deltaY
     }
 
-    this.setScrollPosition(scrollPosition)
+    this.requestRender()
   }
 
   onPanEnd() {
@@ -97,10 +96,10 @@ export default class DragView {
     this.scaleStart = this.scale
 
     // Update transform origin to center point of pinch
-    const position = this.content.offset()
+    const contentRect = this.contentEl.getBoundingClientRect()
     this.transformOrigin = {
-      x: (event.center.x - position.left) / this.scaleStart,
-      y: (event.center.y - position.top) / this.scaleStart
+      x: (event.center.x - contentRect.left) / this.scaleStart,
+      y: (event.center.y - contentRect.top) / this.scaleStart
     }
 
     // Update translate so that scroll position remains same
@@ -111,7 +110,6 @@ export default class DragView {
     const scale = event.scale * this.scaleStart
 
     this.updateScale(scale)
-
     this.requestRender();
   }
 
@@ -119,14 +117,14 @@ export default class DragView {
     this.frame.throttle(() => {
       this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
       this.contentEl.style.webkitTransform = this.contentEl.style.transform = "translate("+this.translate.x+"px,"+this.translate.y+"px) scale("+this.scale+","+this.scale+")"
+      this.setScrollPosition(this.scrollPosition)
     })
   }
 
   centerTransformOrigin() {
-    const contentPosition = this.content.position()
     const transformOrigin = {
-      x: ((this.el.width() / 2) - contentPosition.left) / this.scale,
-      y: ((this.el.height() / 2) - contentPosition.top) / this.scale
+      x: ((this.el.offsetWidth / 2) + this.scrollPosition.x) / this.scale,
+      y: ((this.el.offsetHeight / 2) + this.scrollPosition.y) / this.scale
     }
     this.transformOrigin = transformOrigin
 
@@ -134,14 +132,6 @@ export default class DragView {
     this.translate = this.calculateTranslationOffset();
   }
 
-  calculateAdjustedScrollPosition(translationOffset) {
-    const scrollPosition = this.getScrollPosition()
-
-    return  {
-      x: scrollPosition.x + (translationOffset.x - this.translate.x),
-      y: scrollPosition.y + (translationOffset.y - this.translate.y)
-    }
-  }
 
   updateScale(scale) {
     this.scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
@@ -152,7 +142,7 @@ export default class DragView {
     const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
 
     this.translate = translationOffset
-    this.setScrollPosition(adjustedScrollPosition)
+    this.scrollPosition = adjustedScrollPosition
   }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
@@ -163,16 +153,22 @@ export default class DragView {
     }
   }
 
+  calculateAdjustedScrollPosition(translationOffset) {
+    return  {
+      x: this.scrollPosition.x + (translationOffset.x - this.translate.x),
+      y: this.scrollPosition.y + (translationOffset.y - this.translate.y)
+    }
+  }
   // Return current {x,y} translate
   getScrollPosition() {
     return {
-      x: this.el.scrollLeft(),
-      y: this.el.scrollTop()
+      x: this.el.scrollLeft,
+      y: this.el.scrollTop
     }
   }
 
   setScrollPosition(position) {
-    this.el.scrollLeft(position.x)
-    this.el.scrollTop(position.y)
+    this.el.scrollLeft = position.x
+    this.el.scrollTop = position.y
   }
 }
