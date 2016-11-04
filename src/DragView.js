@@ -2,7 +2,6 @@ import $ from 'jquery'
 import Hammer from 'hammerjs'
 
 import AnimationFrame from './AnimationFrame'
-import StyleSheet from './StyleSheet'
 
 const ensureWithinBoundaries = (value, min, max) => {
   value = value < min ? min : value
@@ -14,6 +13,7 @@ export default class DragView {
   constructor(selector, opts = {}) {
     this.el = $(selector)
     this.content = this.el.children()
+    this.contentEl = this.content[0]
 
     this.minScale = opts.minScale || 1
     this.maxScale = opts.maxScale || 3
@@ -39,44 +39,35 @@ export default class DragView {
       this.hammer.on("pinch", this.onPinch.bind(this))
     }
 
-    this.style = new StyleSheet(this.content)
-    this.style.setTranslate({x: 0, y: 0})
-    this.style.setScale(1)
+    this.scale = 1
+    this.translate = {x: 0, y: 0 }
+    this.transformOrigin = { x:0, y: 0 }
 
     this.frame = new AnimationFrame()
   }
 
-  scaleIn(amount) {
-    this.centerTransformOrigin()
-
-    amount = amount || 0.25
-    const scale = this.style.getScale() * 1 - amount
-    this.updateScale(scale)
+  getScale() {
+    return this.scale
   }
 
   scaleOut(amount) {
     this.centerTransformOrigin()
 
     amount = amount || 0.25
-    const scale = this.style.getScale() * 1 + amount
+    const scale = this.scale * (1 - amount)
     this.updateScale(scale)
+
+    this.requestRender();
   }
 
-  getScale() {
-    return this.style.getScale()
-  }
+  scaleIn(amount) {
+    this.centerTransformOrigin()
 
-  centerTransformOrigin() {
-    const scale = this.style.getScale()
-    const contentPosition = this.content.position()
-    const transformOrigin = {
-      x: ((this.el.width() / 2) - contentPosition.left) / scale,
-      y: ((this.el.height() / 2) - contentPosition.top) / scale
-    }
-    this.style.setTransformOrigin(transformOrigin)
+    amount = amount || 0.25
+    const scale = this.scale * (1 + amount)
+    this.updateScale(scale)
 
-    // Update translate so that scroll position remains same
-    this.style.setTranslate(this.calculateTranslationOffset())
+    this.requestRender();
   }
 
   // Function that stores the scroll position at the start of pan event
@@ -89,11 +80,12 @@ export default class DragView {
       return
     }
     // Calculate scroll position from scroll start
-    const position = {
+    const scrollPosition = {
       x: this.scrollStart.x - event.deltaX,
       y: this.scrollStart.y - event.deltaY
     }
-    this.setScrollPosition(position)
+
+    this.setScrollPosition(scrollPosition)
   }
 
   onPanEnd() {
@@ -102,60 +94,74 @@ export default class DragView {
 
   onPinchStart(event) {
     // Record start value of scale
-    this.scaleStart = this.style.getScale()
+    this.scaleStart = this.scale
 
     // Update transform origin to center point of pinch
     const position = this.content.offset()
-    const transformOrigin = {
+    this.transformOrigin = {
       x: (event.center.x - position.left) / this.scaleStart,
       y: (event.center.y - position.top) / this.scaleStart
     }
-    this.style.setTransformOrigin(transformOrigin)
 
     // Update translate so that scroll position remains same
-    this.style.setTranslate(this.calculateTranslationOffset())
+    this.translate = this.calculateTranslationOffset();
   }
 
   onPinch(event) {
     const scale = event.scale * this.scaleStart
+
+    this.updateScale(scale)
+
+    this.requestRender();
+  }
+
+  requestRender() {
     this.frame.throttle(() => {
-      this.updateScale(scale)
+      this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
+      this.contentEl.style.webkitTransform = this.contentEl.style.transform = "translate("+this.translate.x+"px,"+this.translate.y+"px) scale("+this.scale+","+this.scale+")"
     })
   }
 
+  centerTransformOrigin() {
+    const contentPosition = this.content.position()
+    const transformOrigin = {
+      x: ((this.el.width() / 2) - contentPosition.left) / this.scale,
+      y: ((this.el.height() / 2) - contentPosition.top) / this.scale
+    }
+    this.transformOrigin = transformOrigin
+
+    // Update translate so that scroll position remains same
+    this.translate = this.calculateTranslationOffset();
+  }
+
   calculateAdjustedScrollPosition(translationOffset) {
-    const translate = this.style.getTranslate()
     const scrollPosition = this.getScrollPosition()
 
     return  {
-      x: scrollPosition.x + (translationOffset.x - translate.x),
-      y: scrollPosition.y + (translationOffset.y - translate.y)
+      x: scrollPosition.x + (translationOffset.x - this.translate.x),
+      y: scrollPosition.y + (translationOffset.y - this.translate.y)
     }
   }
 
   updateScale(scale) {
-    scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
-    this.style.setScale(scale)
+    this.scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
 
     // Adjust translate so that content will remain positioned at point (0,0)
     // and scroll position so that no visible scrolling occurs because of translation change
     const translationOffset = this.calculateTranslationOffset()
     const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
 
-    this.style.setTranslate(translationOffset)
+    this.translate = translationOffset
     this.setScrollPosition(adjustedScrollPosition)
   }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
   calculateTranslationOffset() {
-    const scale = this.style.getScale()
-    const origin = this.style.getTransformOrigin()
     return {
-      x: origin.x * (scale-1),
-      y: origin.y * (scale-1)
+      x: this.transformOrigin.x * (this.scale-1),
+      y: this.transformOrigin.y * (this.scale-1)
     }
   }
-
 
   // Return current {x,y} translate
   getScrollPosition() {
