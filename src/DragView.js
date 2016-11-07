@@ -40,7 +40,6 @@ export default class DragView {
     this.scale = 1
     this.translate = {x: 0, y: 0 }
     this.transformOrigin = { x:0, y: 0 }
-    this.scrollPosition = { x: 0, y: 0 }
 
     this.frame = new AnimationFrame()
   }
@@ -55,8 +54,6 @@ export default class DragView {
     amount = amount || 0.25
     const scale = this.scale * (1 - amount)
     this.updateScale(scale)
-
-    this.requestRender();
   }
 
   scaleIn(amount) {
@@ -65,8 +62,6 @@ export default class DragView {
     amount = amount || 0.25
     const scale = this.scale * (1 + amount)
     this.updateScale(scale)
-
-    this.requestRender();
   }
 
   // Function that stores the scroll position at the start of pan event
@@ -79,12 +74,12 @@ export default class DragView {
       return
     }
     // Calculate scroll position from scroll start
-    this.scrollPosition = {
+    const scrollPosition = {
       x: this.scrollStart.x - event.deltaX,
       y: this.scrollStart.y - event.deltaY
     }
 
-    this.requestRender()
+    this.setScrollPosition(scrollPosition)
   }
 
   onPanEnd() {
@@ -101,62 +96,57 @@ export default class DragView {
       x: (event.center.x - contentRect.left) / this.scaleStart,
       y: (event.center.y - contentRect.top) / this.scaleStart
     }
+    this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
 
     // Update translate so that scroll position remains same
-    this.translate = this.calculateTranslationOffset();
+    this.translate = this.calculateTranslate();
   }
 
   onPinch(event) {
     const scale = event.scale * this.scaleStart
 
     this.updateScale(scale)
-    this.requestRender();
-  }
-
-  requestRender() {
-    this.frame.throttle(() => {
-      this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
-      this.contentEl.style.webkitTransform = this.contentEl.style.transform = "translate("+this.translate.x+"px,"+this.translate.y+"px) scale("+this.scale+","+this.scale+")"
-      this.setScrollPosition(this.scrollPosition)
-    })
   }
 
   centerTransformOrigin() {
+    const scrollPosition = this.getScrollPosition()
     const transformOrigin = {
-      x: ((this.el.offsetWidth / 2) + this.scrollPosition.x) / this.scale,
-      y: ((this.el.offsetHeight / 2) + this.scrollPosition.y) / this.scale
+      x: ((this.el.offsetWidth / 2) + scrollPosition.x) / this.scale,
+      y: ((this.el.offsetHeight / 2) + scrollPosition.y) / this.scale
     }
     this.transformOrigin = transformOrigin
+    this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
 
     // Update translate so that scroll position remains same
-    this.translate = this.calculateTranslationOffset();
+    this.translate = this.calculateTranslate();
   }
-
 
   updateScale(scale) {
     this.scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
 
     // Adjust translate so that content will remain positioned at point (0,0)
     // and scroll position so that no visible scrolling occurs because of translation change
-    const translationOffset = this.calculateTranslationOffset()
-    const adjustedScrollPosition = this.calculateAdjustedScrollPosition(translationOffset)
+    const nextTranslate = this.calculateTranslate()
+    const adjustedScrollPosition = this.calculateAdjustedScrollPosition(nextTranslate)
 
-    this.translate = translationOffset
-    this.scrollPosition = adjustedScrollPosition
+    this.translate = nextTranslate
+    this.contentEl.style.webkitTransform = this.contentEl.style.transform = "translate("+this.translate.x+"px,"+this.translate.y+"px) scale("+this.scale+","+this.scale+")"
+    this.setScrollPosition(adjustedScrollPosition)
   }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
-  calculateTranslationOffset() {
+  calculateTranslate() {
     return {
       x: this.transformOrigin.x * (this.scale-1),
       y: this.transformOrigin.y * (this.scale-1)
     }
   }
 
-  calculateAdjustedScrollPosition(translationOffset) {
+  calculateAdjustedScrollPosition(nextTranslate) {
+    const scrollPosition = this.getScrollPosition()
     return  {
-      x: this.scrollPosition.x + (translationOffset.x - this.translate.x),
-      y: this.scrollPosition.y + (translationOffset.y - this.translate.y)
+      x: scrollPosition.x + (nextTranslate.x - this.translate.x),
+      y: scrollPosition.y + (nextTranslate.y - this.translate.y)
     }
   }
   // Return current {x,y} translate
