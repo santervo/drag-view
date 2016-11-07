@@ -5,6 +5,7 @@
   "main": "lib/drag-view.js",
   "scripts": {
     "build": "webpack",
+    "watch": "webpack --watch",
     "prepublish": "npm run build",
     "start": "webpack-dev-server --content-base example/ --config ./webpack.config.dev.js"
   },

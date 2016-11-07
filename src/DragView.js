@@ -104,15 +104,13 @@ export default class DragView {
 
   onPinch(event) {
     const scale = event.scale * this.scaleStart
-
     this.updateScale(scale)
   }
 
   centerTransformOrigin() {
-    const scrollPosition = this.getScrollPosition()
     const transformOrigin = {
-      x: ((this.el.offsetWidth / 2) + scrollPosition.x) / this.scale,
-      y: ((this.el.offsetHeight / 2) + scrollPosition.y) / this.scale
+      x: ((this.el.offsetWidth / 2) + this.el.scrollLeft) / this.scale,
+      y: ((this.el.offsetHeight / 2) + this.el.scrollTop) / this.scale
     }
     this.transformOrigin = transformOrigin
     this.contentEl.style.transformOrigin = this.contentEl.style.webkitTransformOrigin = this.transformOrigin.x + "px " + this.transformOrigin.y + "px"
@@ -123,15 +121,21 @@ export default class DragView {
 
   updateScale(scale) {
     this.scale = ensureWithinBoundaries(scale, this.minScale, this.maxScale)
+    this.frame.throttle(() => { this.render() })
+  }
 
+  render() {
     // Adjust translate so that content will remain positioned at point (0,0)
-    // and scroll position so that no visible scrolling occurs because of translation change
     const nextTranslate = this.calculateTranslate()
-    const adjustedScrollPosition = this.calculateAdjustedScrollPosition(nextTranslate)
+
+    // Adjust scroll position so that view remains centered in current position
+    this.el.scrollLeft = this.el.scrollLeft + (nextTranslate.x - this.translate.x)
+    this.el.scrollTop = this.el.scrollTop + (nextTranslate.y - this.translate.y)
 
     this.translate = nextTranslate
+
+    // Set transform (translate and scale)
     this.contentEl.style.webkitTransform = this.contentEl.style.transform = "translate("+this.translate.x+"px,"+this.translate.y+"px) scale("+this.scale+","+this.scale+")"
-    this.setScrollPosition(adjustedScrollPosition)
   }
 
   // Calculates how much translate we need to position content in (0,0) inside parent element
@@ -143,12 +147,12 @@ export default class DragView {
   }
 
   calculateAdjustedScrollPosition(nextTranslate) {
-    const scrollPosition = this.getScrollPosition()
     return  {
-      x: scrollPosition.x + (nextTranslate.x - this.translate.x),
-      y: scrollPosition.y + (nextTranslate.y - this.translate.y)
+      x: this.el.scrollLeft + (nextTranslate.x - this.translate.x),
+      y: this.el.scrollTop + (nextTranslate.y - this.translate.y)
     }
   }
+
   // Return current {x,y} translate
   getScrollPosition() {
     return {
